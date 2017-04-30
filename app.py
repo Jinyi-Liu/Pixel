@@ -22,27 +22,29 @@ conn = redis_db
 # Initiation:
 if not conn.get('init'):   
     model.init_canvas( conn )
-    count = 1
-    conn.set('init',1)
+    conn.set('count', 1)
+    conn.set('init' , 1)
     
 @app.route( '/canvas/modify', methods = ['GET','POST'] )
 def modify():
-    a = json.loads(request.get_json())
+	IP = request.environ.get('HTTP_X_REAL_IP', request.remote_addr)
+    a = request.get_json()
     canvas = a['canvas'][0]
     position = canvas['x'] * Length + canvas['y']
     color = canvas['color']
     time1 = time.time()
-    # if model.operation( conn, count, position, color, time1 ):
-    #     return jsonify( model.error1 )
-    model.operation( conn, count, position, color, time1 )
-    count += 1
+    count = conn.get("count")
+    if model.operation( conn, count, position, color, time1, IP):
+        return jsonify( model.error1 )
+    # model.operation( conn, count, position, color, time1, IP )
+    conn.incr("count")
     data = {
         "x": canvas['x'],
         "y": canvas['y'],
         "color": color,
         "time": time1
     }
-    count_enter_in = json.loads(request.get_json())['count']
+    count_enter_in = request.get_json()['count']
     list_modify = model.update_canvas( conn, count_enter_in, count ).append(data)
     update_data = { "data":list_modify, "count":count }
     return jsonify( list_modify )
@@ -50,7 +52,8 @@ def modify():
 @app.route('/canvas/update', methods = ['GET'])
 def update():
     # count_current = 1  #just for test
-    count_current = json.loads(request.get_json())['count']
+    count_current = request.get_json()['count']
+    count = conn.get('count')
     list_modify = model.update_canvas( conn, count_current, count )
     update_data = { "data":list_modify, "count":count }
     return jsonify( update_data )
@@ -67,5 +70,5 @@ def update():
 
 @app.route('/')
 def home():
-	count_current = count
+	count_current = conn.get('count')
 	return jsonify( count = count_current )
