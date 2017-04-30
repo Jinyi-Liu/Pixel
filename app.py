@@ -27,7 +27,7 @@ if not conn.get('init'):
     
 @app.route( '/canvas/modify', methods = ['GET','POST'] )
 def modify():
-	IP = request.environ.get('HTTP_X_REAL_IP', request.remote_addr)
+    IP = request.environ.get('HTTP_X_REAL_IP', request.remote_addr)
     a = request.get_json()
     canvas = a['canvas'][0]
     position = canvas['x'] * Length + canvas['y']
@@ -58,6 +58,10 @@ def update():
     update_data = { "data":list_modify, "count":count }
     return jsonify( update_data )
 
+# @app.route('/canvas/refresh', methods = ['GET'])
+# def refresh():
+#     return jsonify("data":list_modify)
+
 # @app.route( '/canvas/get', methods=['GET'] )
 # def get1():
 # 	data={
@@ -70,5 +74,6 @@ def update():
 
 @app.route('/')
 def home():
-	count_current = conn.get('count')
-	return jsonify( count = count_current )
+	count_current = conn.get( 'count' )
+    canvas_current = model.refresh_canvas( conn )
+	return jsonify( data = canvas_current, count = count_current )

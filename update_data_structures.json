@@ -1,0 +1,35 @@
+//response
+{
+    "data":
+    [
+        {
+        "x": canvas['x'],
+        "y": canvas['y'],
+        "color": color,
+        "time": time1
+    	}, //data1
+
+    	{
+        "x": canvas['x'],
+        "y": canvas['y'],
+        "color": color,
+        "time": time1
+    	} //date2
+
+    ],
+
+    "count": 1
+}
+
+//request
+{
+    "canvas":
+    [
+        {
+        "x": 1,
+        "y": 1,
+        "color": 1  
+        }
+    ],
+    "count": 
+}

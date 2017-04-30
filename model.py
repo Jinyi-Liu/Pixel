@@ -13,13 +13,13 @@ error1 = {
 }
 
 Length = 200
-Width = 200
+Width  = 200
 
 def init_canvas( conn ):
     p = conn.pipeline()
     for i in range( 1, Length * Width + 1 ):
         conn.zadd( 'canvas:', i, 0xFFFFFF )
-    p.execute()   
+    p.execute()
     
 def update_modify_time( conn, IP, time1 ):
     conn.zadd( 'time:', IP, time1 )   #update the user'stime
@@ -50,7 +50,6 @@ def operation( conn, count, position, color, time1, IP ):
     operation_record( p, count, position, color, time1 )
     update_modify_time( p, IP, time1 )
     p.execute()
-    
     return 0
 
 def update_canvas( conn, count_current, count ):
@@ -59,3 +58,19 @@ def update_canvas( conn, count_current, count ):
         list_modify.append(conn.hgetall( count_current ))
         count_current += 1
     return list_modify
+
+def refresh_canvas( conn ):
+	list_refresh = []
+    p = conn.pipeline()
+    for i in range(1,40001):
+        p.zscore()
+    p.execute()
+    for i in range(1,40001):
+        dot = 
+        {
+            "x":i % Length,
+            "y":i // Length + 1,
+            "color":p[i-1]
+        }
+        list_refresh.append(dot)
+	return list_refresh
