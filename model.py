@@ -19,7 +19,7 @@ Width  = 200
 def init_canvas( conn ):
     p = conn.pipeline()
     for i in range( 1, Length * Width + 1 ):
-        conn.zadd( 'canvas:', i, 0xFFFFFF )
+        conn.zadd( 'canvas:', i, int(0xFFFFFF) )
     p.execute()
     
 def update_modify_time( conn, IP, time1 ):
@@ -59,7 +59,7 @@ def update_canvas( list_modify, conn, count_current, count ):
     for i in range( count_current, count ):
         p.hgetall( i )
     q = p.execute()
-    for i in range(1, count - count_current ):
+    for i in range( count - count_current ):
         data = {
         "color": eval(q[i][b'color']),
         "x" : eval(q[i][b'x']),
@@ -67,7 +67,6 @@ def update_canvas( list_modify, conn, count_current, count ):
         "time" : eval(q[i][b'time'])
         }
         list_modify.append(data)
-    # list_modify.append(111)
     return list_modify
 
 def refresh_canvas( list_refresh, conn ):
@@ -97,5 +96,4 @@ def refresh_canvas( list_refresh, conn ):
             "color":q[i-1]
             }
         list_refresh.append(dot)
-
     return list_refresh
