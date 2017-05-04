@@ -1,4 +1,4 @@
-# -*- coding: utf-8 -*-
+1# -*- coding: utf-8 -*-
 """
 Created on Tue Apr 25 21:54:30 2017
 
@@ -12,10 +12,9 @@ import redis
 import model
 import time
 import json
-
+import ast
 app = Flask( __name__ )
 app.config.from_object( Configuration )
-
 redis_db = redis.Redis( host='127.0.0.1', port=6379, db=0 )
 conn = redis_db
 
@@ -28,12 +27,12 @@ if not conn.get('init'):
 @app.route( '/canvas/modify', methods = ['POST'] )
 def modify():
     IP = request.environ.get('HTTP_X_REAL_IP', request.remote_addr)
-    a = json.loads(request.get_json())
-    canvas = a['canvas'][0]
-    position = canvas['x'] + (canvas['y']-1) * model.Length
-    color = int(canvas['color'])
-    time1 = time.time()
-    count = eval(conn.get("count"))
+    a  = json.loads(request.get_json())
+    canvas   = a['canvas'][0]
+    position = canvas['x'] + (canvas['y']) * model.Length
+    color =    int(canvas['color'])
+    time1 =    time.time()
+    count =    eval(conn.get("count"))
     if model.operation( conn, count, position, color, time1, IP) == 1:
         return jsonify( model.error1 )
     conn.incr("count")
@@ -41,31 +40,29 @@ def modify():
         "x": canvas['x'],
         "y": canvas['y'],
         "color": color,
-        "time": time1
+        "time" : time1
     }
     count_enter_in = a['count']
-    list_modify = []
+    list_modify    = []
     model.update_canvas( list_modify, conn, count_enter_in, count )
     list_modify.append(data)
-    update_data = { "data":list_modify, "count":eval(conn.get("count")) }
+    update_data = { "data":list_modify, "count":eval(conn.get("count")), "flag":True }
     return jsonify( update_data )
 
 @app.route('/canvas/update', methods = ['GET'])
 def update():
-    # Below may have a BUG ???
-    count_current = request.form('count')
+    count_current = int( request.args.get('count') )
     count = eval(conn.get('count'))
-    if count_current <= 0 :
+    if count_current < -1 :
         return jsonify( model.error1 )
-    # if not (count - count_current):
-    #     return jsonify( model.error1 )
-    list_modify = []
-    model.update_canvas( list_modify, conn, count_current, count )
-    return jsonify( data = list_modify, count = count )
 
-@app.route('/',methods = ['GET'])
-def home():
-    canvas_current = []
-    canvas_current = model.refresh_canvas( canvas_current, conn )
-    count_current = eval( conn.get( 'count' ) )
-    return jsonify( data = canvas_current, count = count_current )
+    if count_current == -1 || count > 40000 :
+        canvas_current = []
+        canvas_current = model.refresh_canvas( canvas_current, conn )
+        count_current = eval( conn.get( 'count' ) )
+        return jsonify( data = canvas_current, count = count_current, flag=True )
+
+    list_modify = []
+    model.update_canvas( list_modify, conn, count_current , count )
+    return jsonify( data = list_modify,    count = count,         flag=True )
+
