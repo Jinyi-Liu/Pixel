@@ -6,8 +6,8 @@ Created on Tue Apr 25 22:37:39 2017
 """
 
 import time
-Limit_Minutes_In_Seconds = 3*60
-
+Limit_Minutes_In_Seconds = 5*60
+Limit_Operation = 10
 error1 = {
     'flag':0
 }
@@ -25,6 +25,12 @@ def init_canvas( conn ):
 def update_modify_time( conn, IP, time1 ):
     conn.zadd( 'time:', IP, time1 )   #update the user'stime
 
+def update_modify_IP_count( conn, IP ):
+    return int( conn.zincrby( 'remaining_count:', IP ) )
+
+def init_modify_time_IP( conn, IP ):
+    conn.zrem( 'time:', IP )
+
 def operated_position_record( conn, position ):
     conn.zincrby( 'operated_position:', position )  #plus 1 to the given positon
 
@@ -38,18 +44,29 @@ def operation_record( conn, count, position, color, time1):
     conn.hset( count, 'time' , time1               )
 
 def operation( conn, count, position, color, time1, IP ):
-    cutoff = time.time() - Limit_Minutes_In_Seconds
-    if conn.zscore('time:', IP) == None :    #interval should be 3 minutes.
-        pass
-    elif conn.zscore('time:', IP) > cutoff :
-        return 1
+    now_time = time1
+    modified_time = conn.zscore('time:', IP)
+    if modified_time == None :
+        update_modify_IP_count( conn, IP )
+        Mark = 0
+    else :
+        remainingTime = (modified_time + Limit_Minutes_In_Seconds) - now_time
+        if remainingTime >= 0 :
+            remainingCount = Limit_Operation - update_modify_IP_count( conn, IP )
+            Mark = 1
+            if remaingCount == 0 :
+                return remainingTime, Mark
+        else :
+            update_modify_time ( conn, IP, time1 )
+            remainingCount = Limit_Operation - 1
+
+    # Mark == 1 means that this operation fails.
     p = conn.pipeline()
     modify_canvas            ( p, position, color )
     operated_position_record ( p, position )
-    operation_record         ( p, count, position, color, time1 )
-    update_modify_time       ( p, IP, time1 )
+    operation_record         ( p, count, position, color, time1 )    
     p.execute()
-    return 0
+    return remaingCount, Mark
 
 def update_canvas( list_modify, conn, count_current, count ):
     p = conn.pipeline()
@@ -58,10 +75,10 @@ def update_canvas( list_modify, conn, count_current, count ):
     q = p.execute()
     for i in range( count - count_current ):
         data = {
-        "color": int(eval( q[i][b'color'] )),
-        "x" :    eval( q[i][b'x']     ),
-        "y" :    eval( q[i][b'y']     ),
-        "time" : eval( q[i][b'time'] )
+        "color": int( q[i][b'color'] ),
+        "x" :    int( q[i][b'x']     ),
+        "y" :    int( q[i][b'y']     ),
+        "time" : int( q[i][b'time']  )
         }
         list_modify.append(data)
     return list_modify
