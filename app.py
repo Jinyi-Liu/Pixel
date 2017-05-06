@@ -1,4 +1,4 @@
-1# -*- coding: utf-8 -*-
+# -*- coding: utf-8 -*-
 """
 Created on Tue Apr 25 21:54:30 2017
 
@@ -10,6 +10,7 @@ from flask import request
 from config import Configuration
 import redis
 import model
+from model import Length, Width
 import time
 import json
 import ast
@@ -24,48 +25,54 @@ if not conn.get('init'):
     conn.set('count', 1)
     conn.set('init' , 1)
     
-@app.route( '/modify', methods = ['POST'] )
+@app.route( '/modify', methods = ['GET','POST'] )
 def modify():
+    head = request.headers.get('User-Agent')
+    if 'Mozilla' not in head :
+        return jsonify( flag = False, notSafari = True )
     IP = request.environ.get( 'HTTP_X_REAL_IP', request.remote_addr )
     a  = request.get_json()
-    canvas   = a['canvas'][0]
-    position = canvas['x'] + (canvas['y']) * model.Length
-    color =    int(canvas['color'])
+    canvas  = a['canvas'][0]
+    position = canvas['x'] % Length + (canvas['y'] % Width) * Length
+    color =    int( canvas['color'] )
     count =    int( conn.get("count") )
     time1 =    time.time()
-    if position > model.Width * model.Length - 1 or color < 0 or color > 0xFFFFFF :
+    if position > Width * Length - 1 or color < 0 or color > 0xFFFFFF :
     	return jsonify( model.error1 )
-    if model.operation( conn, count, position, color, time1, IP) == 1 :
-        return jsonify( model.error1 )
-    conn.incr("count")
+    remaining, Mark = model.operation( conn, count, position, color, time1, IP)
+    if Mark == 1 :
+        return jsonify( remaingTime = int(remaining), flag = False )
+    count = int( conn.incr("count") )
     data = {
         "y": canvas['y'],
         "x": canvas['x'],
         "color": color,
-        "time" : time1
     }
     count_enter_in = a['count']
     list_modify    = []
     model.update_canvas( list_modify, conn, count_enter_in, count )
     list_modify.append(data)
-    update_data = { "data":list_modify, "count":int(conn.get("count")), "flag":True }
-    return jsonify( update_data )
+    return jsonify( data = list_modify, count = count, remaingCount = remaining, flag = True )
 
 @app.route('/update', methods = ['GET'])
 def update():
+    head = request.headers.get('User-Agent')
+    if 'Mozilla' not in head :
+        return jsonify( flag = False )
     count_current = int( request.args.get('count') )
     count = int( conn.get('count') )
     if count_current < -1 or count_current == 0 :
-        return jsonify( model.error1 )
+        return jsonify( flag = False )
     if count_current == 2:
-    	return jsonify(test = request.environ.get( 'HTTP_X_REAL_IP', request.remote_addr ))
+    	return jsonify( request = request.headers.get('User-Agent'))
+    # 	return jsonify( test = request.environ.get( 'HTTP_X_REAL_IP', request.remote_addr ))
     if count_current == -1 :
         canvas_current = []
         canvas_current = model.refresh_canvas( canvas_current, conn )
         count_current = int( conn.get( 'count' ) )
-        return jsonify( data = canvas_current, count = count_current, flag=True )
+        return jsonify( data = canvas_current, count = count_current, flag = True )
 
     list_modify = []
     model.update_canvas( list_modify, conn, count_current , count )
-    return jsonify( data = list_modify,    count = count,         flag=True )
+    return jsonify( data = list_modify, count = count, flag = True )
 

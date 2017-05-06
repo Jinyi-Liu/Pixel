@@ -26,10 +26,10 @@ def update_modify_time( conn, IP, time1 ):
     conn.zadd( 'time:', IP, time1 )   #update the user'stime
 
 def update_modify_IP_count( conn, IP ):
-    return int( conn.zincrby( 'remaining_count:', IP ) )
+    return conn.zincrby( 'already_count:', IP )
 
-def init_modify_time_IP( conn, IP ):
-    conn.zrem( 'time:', IP )
+def init_modify_IP_count( conn, IP ):
+    conn.zrem( 'already_count:', IP )
 
 def operated_position_record( conn, position ):
     conn.zincrby( 'operated_position:', position )  #plus 1 to the given positon
@@ -41,32 +41,37 @@ def operation_record( conn, count, position, color, time1):
     conn.hset( count, 'x',     position %  Width   )
     conn.hset( count, 'y',     position // Length  )
     conn.hset( count, 'color', color               )
-    conn.hset( count, 'time' , time1               )
+    # conn.hset( count, 'time' , time1               )
 
 def operation( conn, count, position, color, time1, IP ):
     now_time = time1
-    modified_time = conn.zscore('time:', IP)
+    modified_time = conn.zscore('time:', IP)    
     if modified_time == None :
-        update_modify_IP_count( conn, IP )
         Mark = 0
     else :
         remainingTime = (modified_time + Limit_Minutes_In_Seconds) - now_time
         if remainingTime >= 0 :
-            remainingCount = Limit_Operation - update_modify_IP_count( conn, IP )
-            Mark = 1
-            if remaingCount == 0 :
-                return remainingTime, Mark
+            remainingCount = Limit_Operation - int(update_modify_IP_count( conn, IP ))         
+            if remainingCount < 0 :
+                Mark = 1
+                return remainingTime,Mark
+            else :
+                Mark = 2
         else :
-            update_modify_time ( conn, IP, time1 )
-            remainingCount = Limit_Operation - 1
+            Mark = 0
 
-    # Mark == 1 means that this operation fails.
-    p = conn.pipeline()
+    p = conn.pipeline()        
+    if not Mark :    	
+    	init_modify_IP_count  ( p, IP )
+    	update_modify_IP_count( p, IP )
+    	update_modify_time    ( p, IP, time1 )
+    	remainingCount = Limit_Operation - 1
+    
     modify_canvas            ( p, position, color )
     operated_position_record ( p, position )
-    operation_record         ( p, count, position, color, time1 )    
+    operation_record         ( p, count, position, color, time1 )
     p.execute()
-    return remaingCount, Mark
+    return remainingCount, Mark
 
 def update_canvas( list_modify, conn, count_current, count ):
     p = conn.pipeline()
@@ -78,7 +83,7 @@ def update_canvas( list_modify, conn, count_current, count ):
         "color": int( q[i][b'color'] ),
         "x" :    int( q[i][b'x']     ),
         "y" :    int( q[i][b'y']     ),
-        "time" : int( q[i][b'time']  )
+        # "time" : eval( q[i][b'time']  )
         }
         list_modify.append(data)
     return list_modify
