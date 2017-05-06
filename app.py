@@ -27,9 +27,13 @@ if not conn.get('init'):
     
 @app.route( '/modify', methods = ['GET','POST'] )
 def modify():
+	# Identify the origin of operation
+	# If it's not from safari, this operation fails.
     head = request.headers.get('User-Agent')
     if 'Mozilla' not in head :
         return jsonify( flag = False, notSafari = True )
+
+    # Get json
     IP = request.environ.get( 'HTTP_X_REAL_IP', request.remote_addr )
     a  = request.get_json()
     canvas  = a['canvas'][0]
@@ -37,35 +41,43 @@ def modify():
     color =    int( canvas['color'] )
     count =    int( conn.get("count") )
     time1 =    time.time()
-    if position > Width * Length - 1 or color < 0 or color > 0xFFFFFF :
+    count_enter_in = a['count']
+
+    if color < 0 or color > 0xFFFFFF :
     	return jsonify( model.error1 )
+    # Operate
     remaining, Mark = model.operation( conn, count, position, color, time1, IP)
+
+    # get data of update
+    list_modify    = []
+    model.update_canvas( list_modify, conn, count_enter_in, count )
+    
+    # Mark == 1 means that this operation fails.
+    # Return the data of update
     if Mark == 1 :
-        return jsonify( remaingTime = int(remaining), flag = False )
+        return jsonify( data = list_modify, count = count, remaingTime = remaining, flag = False )
+    
+    # If the operation succeed, count += 1
+    # And append the it to list_modify.
     count = int( conn.incr("count") )
     data = {
         "y": canvas['y'],
         "x": canvas['x'],
         "color": color,
     }
-    count_enter_in = a['count']
-    list_modify    = []
-    model.update_canvas( list_modify, conn, count_enter_in, count )
     list_modify.append(data)
+    
     return jsonify( data = list_modify, count = count, remaingCount = remaining, flag = True )
 
 @app.route('/update', methods = ['GET'])
 def update():
     head = request.headers.get('User-Agent')
     if 'Mozilla' not in head :
-        return jsonify( flag = False )
+        return jsonify( flag = False, notSafari = True )
     count_current = int( request.args.get('count') )
-    count = int( conn.get('count') )
+    count =         int( conn.get('count') )
     if count_current < -1 or count_current == 0 :
         return jsonify( flag = False )
-    if count_current == 2:
-    	return jsonify( request = request.headers.get('User-Agent'))
-    # 	return jsonify( test = request.environ.get( 'HTTP_X_REAL_IP', request.remote_addr ))
     if count_current == -1 :
         canvas_current = []
         canvas_current = model.refresh_canvas( canvas_current, conn )

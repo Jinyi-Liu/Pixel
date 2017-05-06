@@ -5,13 +5,11 @@ Created on Tue Apr 25 22:37:39 2017
 @author: mmmmm
 """
 
-import time
 Limit_Minutes_In_Seconds = 5*60
 Limit_Operation = 10
 error1 = {
     'flag':0
 }
-
 
 Length = 200
 Width  = 200
@@ -41,27 +39,29 @@ def operation_record( conn, count, position, color, time1):
     conn.hset( count, 'x',     position %  Width   )
     conn.hset( count, 'y',     position // Length  )
     conn.hset( count, 'color', color               )
-    # conn.hset( count, 'time' , time1               )
+    # conn.hset( count, 'time' , time1             )
 
 def operation( conn, count, position, color, time1, IP ):
     now_time = time1
-    modified_time = conn.zscore('time:', IP)    
+    modified_time = conn.zscore('time:', IP)
     if modified_time == None :
         Mark = 0
     else :
-        remainingTime = (modified_time + Limit_Minutes_In_Seconds) - now_time
+        remainingTime = int( (modified_time + Limit_Minutes_In_Seconds) - now_time )
         if remainingTime >= 0 :
-            remainingCount = Limit_Operation - int(update_modify_IP_count( conn, IP ))         
+            remainingCount = Limit_Operation - int(update_modify_IP_count( conn, IP ))     
             if remainingCount < 0 :
                 Mark = 1
                 return remainingTime,Mark
             else :
                 Mark = 2
         else :
+        	# Five minutes have passed
             Mark = 0
 
-    p = conn.pipeline()        
-    if not Mark :    	
+    p = conn.pipeline()
+    # Haven't operated or five minutes have passed
+    if not Mark :
     	init_modify_IP_count  ( p, IP )
     	update_modify_IP_count( p, IP )
     	update_modify_time    ( p, IP, time1 )
