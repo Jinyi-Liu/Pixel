@@ -29,9 +29,9 @@ if not conn.get('init'):
 def modify():
 	# Identify the origin of operation
 	# If it's not from safari, this operation fails.
-    head = request.headers.get('User-Agent')
-    if 'Mozilla' not in head :
-        return jsonify( flag = False, notSafari = True )
+    # head = request.headers.get('User-Agent')
+    # if 'Mozilla' not in head :
+    #     return jsonify( flag = False, notSafari = True )
 
     # Get json
     IP = request.environ.get( 'HTTP_X_REAL_IP', request.remote_addr )
@@ -46,8 +46,10 @@ def modify():
     if color < 0 or color > 0xFFFFFF :
     	return jsonify( model.error1 )
     # Operate
-    remaining, Mark = model.operation( conn, count, position, color, time1, IP)
-
+    ope = model.operation( conn, count, position, color, time1, IP)
+    remaining = ope[0]
+    Mark = ope[1]
+    
     # get data of update
     list_modify    = []
     model.update_canvas( list_modify, conn, count_enter_in, count )
@@ -71,9 +73,9 @@ def modify():
 
 @app.route('/update', methods = ['GET'])
 def update():
-    head = request.headers.get('User-Agent')
-    if 'Mozilla' not in head :
-        return jsonify( flag = False, notSafari = True )
+    # head = request.headers.get('User-Agent')
+    # if 'Mozilla' not in head :
+    #     return jsonify( flag = False, notSafari = True )
     count_current = int( request.args.get('count') )
     count =         int( conn.get('count') )
     if count_current < -1 or count_current == 0 :

@@ -52,7 +52,7 @@ def operation( conn, count, position, color, time1, IP ):
             remainingCount = Limit_Operation - int(update_modify_IP_count( conn, IP ))     
             if remainingCount < 0 :
                 Mark = 1
-                return remainingTime,Mark
+                return [remainingTime,Mark]
             else :
                 Mark = 2
         else :
@@ -71,7 +71,7 @@ def operation( conn, count, position, color, time1, IP ):
     operated_position_record ( p, position )
     operation_record         ( p, count, position, color, time1 )
     p.execute()
-    return remainingCount, Mark
+    return [remainingCount, Mark]
 
 def update_canvas( list_modify, conn, count_current, count ):
     p = conn.pipeline()
