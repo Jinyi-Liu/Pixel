@@ -7,16 +7,13 @@ Created on Tue Apr 25 22:37:39 2017
 
 Limit_Minutes_In_Seconds = 5*60
 Limit_Operation = 10
-error1 = {
-    'flag':0
-}
 
-Length = 200
-Width  = 200
+Length = 300
+Width  = 300
 
 def init_canvas( conn ):
     p = conn.pipeline()
-    for i in range( Length * Width ):   # [0, 39999]
+    for i in range( Length * Width ):
         conn.zadd( 'canvas:', i, int(0xF9FAFC) )
     p.execute()
     
@@ -52,7 +49,7 @@ def operation( conn, count, position, color, time1, IP ):
             remainingCount = Limit_Operation - int(update_modify_IP_count( conn, IP ))     
             if remainingCount < 0 :
                 Mark = 1
-                return [remainingTime,Mark]
+                return remainingTime, Mark
             else :
                 Mark = 2
         else :
@@ -71,7 +68,7 @@ def operation( conn, count, position, color, time1, IP ):
     operated_position_record ( p, position )
     operation_record         ( p, count, position, color, time1 )
     p.execute()
-    return [remainingCount, Mark]
+    return remainingCount, Mark
 
 def update_canvas( list_modify, conn, count_current, count ):
     p = conn.pipeline()
