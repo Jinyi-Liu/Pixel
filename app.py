@@ -4,7 +4,7 @@ Created on Tue Apr 25 21:54:30 2017
 
 @author: mmmmm
 """
-
+import gzip
 from flask import Flask,jsonify
 from flask import request
 from config import Configuration
@@ -13,8 +13,12 @@ from model import *
 import time
 import json
 import ast
-app = Flask( __name__ )
+
+from flask_compress import Compress
+app = Flask(__name__)
 app.config.from_object( Configuration )
+Compress( app )
+
 redis_db = redis.Redis( host='127.0.0.1', port=6379, db=0 )
 conn = redis_db
 
@@ -23,8 +27,19 @@ if not conn.get('init'):
     init_canvas( conn )
     conn.set('count', 1)
     conn.set('init' , 1)
-    
-@app.route( '/modify', methods = ['GET','POST'] )
+    conn.set('update_db', 3)
+if not conn.get('expand'):
+    p = conn.pipeline()
+    for i in range( 40000, Length * Width ):
+        conn.zadd( 'canvas:', i, int(0xF9FAFC) )
+    p.execute()
+    conn.set('expand', 1)
+
+canvas1 = []
+canvas2 = []
+canvas3 = []
+
+@app.route( '/modify', methods = ['POST'] )
 def modify():
 	# Identify the origin of operation
 	# If it's not from safari, this operation fails.
@@ -51,6 +66,9 @@ def modify():
     list_modify    = []
     update_canvas( list_modify, conn, count_enter_in, count )
     
+    # update canvas DB
+    refresh_canvas( conn, count, canvas1, canvas2, canvas3 )
+
     # Mark == 1 means that this operation fails.
     # Return the data of update
     if Mark == 1 :
@@ -77,14 +95,18 @@ def update():
     count =         int( conn.get('count') )
     if count_current < -1 or count_current == 0 :
         return jsonify( flag = False )
-    # count_current == -1 : refresh the canvas
-    if count_current == -1 :
-        canvas_current = []
-        canvas_current = refresh_canvas( canvas_current, conn )
-        count_current = int( conn.get( 'count' ) )
-        return jsonify( data = canvas_current, count = count, flag = True )
 
     list_modify = []
+    # Refresh
+    if count_current == -1 :
+        list_modify = response_refresh( conn, count, canvas1, canvas2, canvas3 )
+        return jsonify( data = list_modify, count = count, flag = True )
+    # Update
     update_canvas( list_modify, conn, count_current , count )
     return jsonify( data = list_modify, count = count, flag = True )
 
+@app.route('/refresh', methods=['GET'])
+def refresh():
+	count = int( conn.get('count') )
+	flag = refresh_canvas( conn, count, canvas1, canvas2, canvas3 )
+	return jsonify( flag = flag )
