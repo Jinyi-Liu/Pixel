@@ -4,17 +4,15 @@ Created on Tue Apr 25 21:54:30 2017
 
 @author: mmmmm
 """
-import gzip
-from flask import Flask,jsonify
+from model import *
+from flask_compress import Compress
+from flask import Flask, jsonify
 from flask import request
 from config import Configuration
 import redis
-from model import *
+import gzip
 import time
-import json
-import ast
 
-from flask_compress import Compress
 app = Flask(__name__)
 app.config.from_object( Configuration )
 Compress( app )
@@ -27,17 +25,27 @@ if not conn.get('init'):
     init_canvas( conn )
     conn.set('count', 1)
     conn.set('init' , 1)
-    conn.set('update_db', 3)
 if not conn.get('expand'):
+    conn.set('expand', 1)
+    canvasStatus = []
     p = conn.pipeline()
     for i in range( 40000, Length * Width ):
-        conn.zadd( 'canvas:', i, int(0xF9FAFC) )
+        p.zadd( "canvas:", i, int(0xF9FAFC) )
+    for i in range( 40000 ):
+    	color = int(conn.zscore("canvas:", i ))
+    	x = i % 200
+    	y = i //200
+    	position = x + y * 300
+    	p.zadd( "canvas:", position, color)
     p.execute()
-    conn.set('expand', 1)
 
-canvas1 = []
-canvas2 = []
-canvas3 = []
+    p1 = conn.pipeline()
+    for i in range( Length * Width ):
+        p1.zscore("canvas:", i)
+    q = p1.execute()
+    for i in range( Length * Width ):
+    	if int(q[i]) != int(0xF9FAFC):
+    		canvasStatus.append( i )
 
 @app.route( '/modify', methods = ['POST'] )
 def modify():
@@ -65,9 +73,6 @@ def modify():
     # get data of update
     list_modify    = []
     update_canvas( list_modify, conn, count_enter_in, count )
-    
-    # update canvas DB
-    refresh_canvas( conn, count, canvas1, canvas2, canvas3 )
 
     # Mark == 1 means that this operation fails.
     # Return the data of update
@@ -80,8 +85,10 @@ def modify():
     data = {
         "y": canvas['y'],
         "x": canvas['x'],
-        "color": color,
+        "color": color
     }
+    if color != 0xF9FAFC and position not in canvasStatus:
+        canvasStatus.append( position )
     list_modify.append(data)
     
     return jsonify( data = list_modify, count = count, remaingCount = remaining, flag = True )
@@ -99,14 +106,8 @@ def update():
     list_modify = []
     # Refresh
     if count_current == -1 :
-        list_modify = response_refresh( conn, count, canvas1, canvas2, canvas3 )
+        list_modify = response_refresh( conn, count, canvasStatus)
         return jsonify( data = list_modify, count = count, flag = True )
     # Update
     update_canvas( list_modify, conn, count_current , count )
     return jsonify( data = list_modify, count = count, flag = True )
-
-@app.route('/refresh', methods=['GET'])
-def refresh():
-	count = int( conn.get('count') )
-	flag = refresh_canvas( conn, count, canvas1, canvas2, canvas3 )
-	return jsonify( flag = flag )
