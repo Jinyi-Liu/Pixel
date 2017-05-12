@@ -26,27 +26,6 @@ if not conn.get('init'):
     conn.set('count', 1)
     conn.set('init' , 1)
 
-# if not conn.get('expand'):
-#     conn.set('expand', 1)
-#     canvasStatus = []
-#     p = conn.pipeline()
-#     for i in range( 40000, Length * Width ):
-#         p.zadd( "canvas:", i, int(0xF9FAFC) )
-#     for i in range( 40000 ):
-#     	color = int(conn.zscore("canvas:", i ))
-#     	x = i % 200
-#     	y = i //200
-#     	position = x + y * 300
-#     	p.zadd( "canvas:", position, color)
-#     p.execute()
-
-#     p1 = conn.pipeline()
-#     for i in range( Length * Width ):
-#         p1.zscore("canvas:", i)
-#     q1 = p1.execute()
-#     for i in range( Length * Width ):
-#     	if int(q1[i]) != int(0xF9FAFC):
-#     		canvasStatus.append( i )
 canvasStatus = []
 # Redeploy
 if 1:
@@ -62,9 +41,9 @@ if 1:
 def modify():
 	# Identify the origin of operation
 	# If it's not from safari, this operation fails.
-    # head = request.headers.get('User-Agent')
-    # if 'Mozilla' not in head :
-    #     return jsonify( flag = False, notSafari = True )
+    head = request.headers.get('User-Agent')
+    if 'Mozilla' not in head :
+        return jsonify( flag = False, notSafari = True )
 
     # Get json
     IP = request.environ.get( 'HTTP_X_REAL_IP', request.remote_addr )
@@ -109,6 +88,7 @@ def update():
     head = request.headers.get('User-Agent')
     if 'Mozilla' not in head :
         return jsonify( flag = False, notSafari = True )
+    
     count_current = int( request.args.get('count') )
     count =         int( conn.get('count') )
     if count_current < -1 or count_current == 0 :
