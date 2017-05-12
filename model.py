@@ -6,7 +6,7 @@ Created on Tue Apr 25 22:37:39 2017
 """
 import time
 Limit_Minutes_In_Seconds = 5*60
-Limit_Operation = 1000
+Limit_Operation = 10
 
 Length = 300
 Width  = 300
